@@ -78,7 +78,12 @@ const getStockHistory = async (req, res) => {
                PARTITION BY ds.pba_type_id 
                ORDER BY ds.date ASC 
                ROWS UNBOUNDED PRECEDING
-             ) as period_stock_initial
+             ) as period_stock_initial,
+             LAST_VALUE(ds.stock_actuel) OVER (
+               PARTITION BY ds.pba_type_id 
+               ORDER BY ds.date ASC 
+               ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+             ) as period_stock_actuel
       FROM daily_stock ds
       JOIN pba_types pt ON ds.pba_type_id = pt.id
       LEFT JOIN users u ON ds.created_by = u.id

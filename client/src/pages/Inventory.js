@@ -110,20 +110,28 @@ const Inventory = () => {
       };
     });
     
+    // Trier les données par date pour traiter dans l'ordre chronologique
+    const sortedData = data.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
     // Remplir avec les données réelles
-    data.forEach(item => {
+    sortedData.forEach(item => {
       if (grouped[item.code]) {
+        // Accumulation pour production, livraison, avaries
         grouped[item.code].production += item.production || 0;
         grouped[item.code].livraison += item.livraison || 0;
         grouped[item.code].avaries += item.avaries || 0;
         
-        // Pour le stock initial, prendre la valeur la plus récente non-zéro
-        if (item.stock_initial > grouped[item.code].stockInitial) {
+        // Pour le stock initial, prendre la première valeur non-zéro
+        if (grouped[item.code].count === 0 && item.stock_initial > 0) {
           grouped[item.code].stockInitial = item.stock_initial;
         }
         
-        // Pour le stock actuel, prendre la dernière valeur
-        grouped[item.code].stockActuel = item.stock_actuel || 0;
+        // Pour le stock actuel, utiliser period_stock_actuel si disponible, sinon la valeur courante
+        if (item.period_stock_actuel !== undefined) {
+          grouped[item.code].stockActuel = item.period_stock_actuel;
+        } else {
+          grouped[item.code].stockActuel = item.stock_actuel || 0;
+        }
         
         grouped[item.code].count += 1;
       }
