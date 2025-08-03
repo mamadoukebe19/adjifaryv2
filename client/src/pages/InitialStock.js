@@ -66,12 +66,14 @@ const InitialStock = () => {
         livraison: 0,
         avaries: 0,
         observations: 'Stock initial ajouté',
-        stock_initial: item.stock_initial,
       }));
 
-      await stockAPI.saveDailyStock({
+      await stockAPI.saveInitialStock({
         date: selectedDate.format('YYYY-MM-DD'),
-        stockData: dataToSave,
+        stockData: stockData.map(item => ({
+          pba_type_id: item.pba_type_id,
+          stock_initial: item.stock_initial,
+        })),
       });
       setMessage('Stock initial sauvegardé avec succès');
     } catch (error) {

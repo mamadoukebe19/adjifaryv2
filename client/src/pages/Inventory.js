@@ -48,12 +48,17 @@ const Inventory = () => {
     setLoading(true);
     try {
       const { startDate, endDate } = getDateRange();
-      const response = await stockAPI.getStockHistory({
-        startDate: startDate.format('YYYY-MM-DD'),
-        endDate: endDate.format('YYYY-MM-DD'),
-      });
+      
+      // Charger les types PBA et l'historique
+      const [pbaTypesResponse, historyResponse] = await Promise.all([
+        stockAPI.getPbaTypes(),
+        stockAPI.getStockHistory({
+          startDate: startDate.format('YYYY-MM-DD'),
+          endDate: endDate.format('YYYY-MM-DD'),
+        })
+      ]);
 
-      const groupedData = groupDataByPBA(response.data);
+      const groupedData = groupDataByPBA(historyResponse.data, pbaTypesResponse.data);
       setInventoryData(groupedData);
       calculateTotals(groupedData);
     } catch (error) {
@@ -88,29 +93,40 @@ const Inventory = () => {
     return { startDate, endDate };
   };
 
-  const groupDataByPBA = (data) => {
+  const groupDataByPBA = (data, pbaTypes) => {
     const grouped = {};
     
+    // Initialiser tous les types PBA
+    pbaTypes.forEach(type => {
+      grouped[type.code] = {
+        code: type.code,
+        description: type.description,
+        stockInitial: 0,
+        production: 0,
+        livraison: 0,
+        avaries: 0,
+        stockActuel: 0,
+        count: 0,
+      };
+    });
+    
+    // Remplir avec les données réelles
     data.forEach(item => {
-      if (!grouped[item.code]) {
-        grouped[item.code] = {
-          code: item.code,
-          description: item.description,
-          stockInitial: 0,
-          production: 0,
-          livraison: 0,
-          avaries: 0,
-          stockActuel: 0,
-          count: 0,
-        };
+      if (grouped[item.code]) {
+        grouped[item.code].production += item.production || 0;
+        grouped[item.code].livraison += item.livraison || 0;
+        grouped[item.code].avaries += item.avaries || 0;
+        
+        // Pour le stock initial, prendre la valeur la plus récente non-zéro
+        if (item.stock_initial > grouped[item.code].stockInitial) {
+          grouped[item.code].stockInitial = item.stock_initial;
+        }
+        
+        // Pour le stock actuel, prendre la dernière valeur
+        grouped[item.code].stockActuel = item.stock_actuel || 0;
+        
+        grouped[item.code].count += 1;
       }
-      
-      grouped[item.code].stockInitial += item.stock_initial || 0;
-      grouped[item.code].production += item.production || 0;
-      grouped[item.code].livraison += item.livraison || 0;
-      grouped[item.code].avaries += item.avaries || 0;
-      grouped[item.code].stockActuel += item.stock_actuel || 0;
-      grouped[item.code].count += 1;
     });
 
     return Object.values(grouped);

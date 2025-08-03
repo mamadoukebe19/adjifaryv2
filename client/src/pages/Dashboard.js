@@ -12,7 +12,9 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Button,
 } from '@mui/material';
+import dayjs from 'dayjs';
 import {
   LineChart,
   Line,
@@ -35,21 +37,30 @@ const Dashboard = () => {
     weeklyEvolution: [],
   });
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  const [lastUpdate, setLastUpdate] = useState(dayjs());
 
   const loadDashboardData = async () => {
     try {
       const response = await stockAPI.getDashboardData();
       setDashboardData(response.data);
+      setLastUpdate(dayjs());
     } catch (error) {
       console.error('Erreur lors du chargement du dashboard:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadDashboardData();
+    
+    // Auto-refresh toutes les 30 secondes
+    const interval = setInterval(() => {
+      loadDashboardData();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const StatCard = ({ title, value, color = '#1976d2' }) => (
     <Card>
@@ -72,6 +83,19 @@ const Dashboard = () => {
 
   return (
     <Layout title="Dashboard PDG">
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="body2" color="textSecondary">
+          Dernière mise à jour: {lastUpdate.format('DD/MM/YYYY HH:mm:ss')}
+        </Typography>
+        <Button 
+          variant="outlined" 
+          size="small" 
+          onClick={loadDashboardData}
+          disabled={loading}
+        >
+          {loading ? 'Actualisation...' : 'Actualiser'}
+        </Button>
+      </Box>
       <Grid container spacing={3}>
         {/* Cartes récapitulatives */}
         <Grid item xs={12} sm={6} md={3}>

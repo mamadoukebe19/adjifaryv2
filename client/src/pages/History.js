@@ -29,8 +29,8 @@ const History = () => {
   const [history, setHistory] = useState([]);
   const [pbaTypes, setPbaTypes] = useState([]);
   const [filters, setFilters] = useState({
-    startDate: dayjs().subtract(30, 'day'),
-    endDate: dayjs(),
+    period: 'month',
+    selectedDate: dayjs(),
     pbaType: '',
   });
   const [loading, setLoading] = useState(false);
@@ -49,12 +49,38 @@ const History = () => {
     }
   };
 
+  const getDateRange = () => {
+    const { period, selectedDate } = filters;
+    let startDate, endDate;
+
+    switch (period) {
+      case 'day':
+        startDate = selectedDate;
+        endDate = selectedDate;
+        break;
+      case 'week':
+        startDate = selectedDate.startOf('week');
+        endDate = selectedDate.endOf('week');
+        break;
+      case 'month':
+        startDate = selectedDate.startOf('month');
+        endDate = selectedDate.endOf('month');
+        break;
+      default:
+        startDate = selectedDate.subtract(30, 'day');
+        endDate = selectedDate;
+    }
+
+    return { startDate, endDate };
+  };
+
   const loadHistory = async () => {
     setLoading(true);
     try {
+      const { startDate, endDate } = getDateRange();
       const params = {
-        startDate: filters.startDate.format('YYYY-MM-DD'),
-        endDate: filters.endDate.format('YYYY-MM-DD'),
+        startDate: startDate.format('YYYY-MM-DD'),
+        endDate: endDate.format('YYYY-MM-DD'),
       };
       
       if (filters.pbaType) {
@@ -89,22 +115,25 @@ const History = () => {
       <Box sx={{ mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={6} md={3}>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                label="Date de début"
-                value={filters.startDate}
-                onChange={(value) => handleFilterChange('startDate', value)}
-                format="DD/MM/YYYY"
-                fullWidth
-              />
-            </LocalizationProvider>
+            <FormControl fullWidth>
+              <InputLabel>Période</InputLabel>
+              <Select
+                value={filters.period}
+                onChange={(e) => handleFilterChange('period', e.target.value)}
+                label="Période"
+              >
+                <MenuItem value="day">Jour</MenuItem>
+                <MenuItem value="week">Semaine</MenuItem>
+                <MenuItem value="month">Mois</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
-                label="Date de fin"
-                value={filters.endDate}
-                onChange={(value) => handleFilterChange('endDate', value)}
+                label="Date"
+                value={filters.selectedDate}
+                onChange={(value) => handleFilterChange('selectedDate', value)}
                 format="DD/MM/YYYY"
                 fullWidth
               />

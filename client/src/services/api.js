@@ -22,6 +22,7 @@ export const stockAPI = {
   getPbaTypes: () => api.get('/stock/pba-types'),
   getDailyStock: (date) => api.get(`/stock/daily/${date}`),
   saveDailyStock: (data) => api.post('/stock/daily', data),
+  saveInitialStock: (data) => api.post('/stock/initial-stock', data),
   getStockHistory: (params) => api.get('/stock/history', { params }),
   getDashboardData: () => api.get('/stock/dashboard'),
 };

@@ -51,6 +51,7 @@ const createOrUpdateDailyStock = async (req, res) => {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (date, pba_type_id)
         DO UPDATE SET
+          stock_initial = EXCLUDED.stock_initial,
           production = EXCLUDED.production,
           livraison = EXCLUDED.livraison,
           avaries = EXCLUDED.avaries,
@@ -72,7 +73,12 @@ const getStockHistory = async (req, res) => {
     const { startDate, endDate, pbaType } = req.query;
     
     let query = `
-      SELECT ds.*, pt.code, pt.description, u.username
+      SELECT ds.*, pt.code, pt.description, u.username,
+             FIRST_VALUE(ds.stock_initial) OVER (
+               PARTITION BY ds.pba_type_id 
+               ORDER BY ds.date ASC 
+               ROWS UNBOUNDED PRECEDING
+             ) as period_stock_initial
       FROM daily_stock ds
       JOIN pba_types pt ON ds.pba_type_id = pt.id
       LEFT JOIN users u ON ds.created_by = u.id
@@ -108,14 +114,20 @@ const getDashboardData = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    // Stock actuel par type
+    // Stock actuel par type (dernier stock connu)
     const currentStockResult = await pool.query(`
       SELECT pt.code, pt.description, 
-             COALESCE(ds.stock_actuel, 0) as stock_actuel,
-             COALESCE(ds.production, 0) as production_today,
-             COALESCE(ds.livraison, 0) as livraison_today
+             COALESCE(latest.stock_actuel, 0) as stock_actuel,
+             COALESCE(today.production, 0) as production_today,
+             COALESCE(today.livraison, 0) as livraison_today
       FROM pba_types pt
-      LEFT JOIN daily_stock ds ON pt.id = ds.pba_type_id AND ds.date = $1
+      LEFT JOIN (
+        SELECT DISTINCT ON (pba_type_id) pba_type_id, stock_actuel
+        FROM daily_stock 
+        WHERE date <= $1
+        ORDER BY pba_type_id, date DESC
+      ) latest ON pt.id = latest.pba_type_id
+      LEFT JOIN daily_stock today ON pt.id = today.pba_type_id AND today.date = $1
       ORDER BY pt.code
     `, [today]);
 
